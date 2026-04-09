@@ -34,4 +34,8 @@ public class User {
     private List<Order> orders = new ArrayList<>();
 
     private Instant deletedAt;
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }

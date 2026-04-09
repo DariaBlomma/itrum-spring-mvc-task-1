@@ -35,4 +35,8 @@ public class Order {
     private User user;
 
     private Instant deletedAt;
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }
