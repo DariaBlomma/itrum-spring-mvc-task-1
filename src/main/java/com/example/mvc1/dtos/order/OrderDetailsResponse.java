@@ -1,0 +1,18 @@
+package com.example.mvc1.dtos.order;
+
+import com.example.mvc1.enums.OrderStatus;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+@Data
+@AllArgsConstructor
+public class OrderDetailsResponse {
+    private Long id;
+    private String title;
+    private BigDecimal price;
+    private OrderStatus status;
+    private Instant deletedAt;
+}
