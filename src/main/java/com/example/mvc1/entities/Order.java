@@ -15,17 +15,12 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Title is required")
-    @Size(min = 2, max = 200, message = "Title must be between 2 and 200 characters")
     @Column(nullable = false, length = 200)
     private String title;
 
-    @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.01", message = "Price must be at least 0.01")
     @Column(nullable = false)
     private BigDecimal price;
 
-    @NotNull(message = "Order status is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
     private OrderStatus status;

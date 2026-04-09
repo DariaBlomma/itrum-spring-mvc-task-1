@@ -1,9 +1,11 @@
 package com.example.mvc1.controllers;
 
 import com.example.mvc1.dtos.Views;
+import com.example.mvc1.dtos.user.UserCreateRequest;
 import com.example.mvc1.dtos.user.UserResponse;
 import com.example.mvc1.services.UserService;
 import com.fasterxml.jackson.annotation.JsonView;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -18,8 +20,8 @@ public class UserController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UserResponse create() {
-
+    public UserResponse create(@Valid @RequestBody UserCreateRequest request) {
+        return userService.create(request);
     }
 
     @JsonView(Views.UserFullWithOrders.class)
