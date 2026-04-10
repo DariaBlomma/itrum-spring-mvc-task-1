@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +37,11 @@ public class OrderService {
                 () -> new ResourceNotFoundException("Order not found with id " + orderId)
         );
         return orderMapper.toResponse(order);
+    }
+
+    public List<OrderResponse> getList(Long userId) {
+        List<Order> orders = orderRepository.findAllActiveForUser(userId);
+        return orders.stream().map(orderMapper::toResponse).toList();
     }
 
     public OrderResponse update(Long userId, Long orderId, OrderRequest request) {

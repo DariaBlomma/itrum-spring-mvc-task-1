@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 
 @Data
 @RequiredArgsConstructor
-public class UserCreateRequest {
+public class UserRequest {
     @NotNull(message = "Login is required")
     @Size(min = 2, max = 200, message = "User Name must be between 2 and 200 characters")
     private String userName;
