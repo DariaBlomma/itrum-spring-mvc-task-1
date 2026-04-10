@@ -9,7 +9,7 @@ import java.time.Instant;
 
 @Data
 @AllArgsConstructor
-public class OrderDetailsResponse {
+public class OrderResponse {
     private Long id;
     private String title;
     private BigDecimal price;

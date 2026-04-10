@@ -1,7 +1,7 @@
 package com.example.mvc1.dtos.user;
 
 import com.example.mvc1.dtos.Views;
-import com.example.mvc1.dtos.order.OrderDetailsResponse;
+import com.example.mvc1.dtos.order.OrderResponse;
 import com.fasterxml.jackson.annotation.JsonView;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,7 +16,7 @@ public class UserResponse {
     private String email;
 
     @JsonView(Views.UserFullWithOrders.class)
-    private List<OrderDetailsResponse> orders;
+    private List<OrderResponse> orders;
 
     @JsonView(Views.UserFull.class)
     private String color;

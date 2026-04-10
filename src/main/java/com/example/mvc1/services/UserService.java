@@ -26,6 +26,12 @@ public class UserService {
         return userMapper.toResponse(saved);
     }
 
+    public UserResponse getOneWithOrders(Long userId) {
+        User user = userRepository.findActiveById(userId).orElseThrow(
+                () -> new ResourceNotFoundException("User not found with id: " + userId));
+        // todo: create OrderService
+    }
+
     @Transactional
     public void softDelete(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(
