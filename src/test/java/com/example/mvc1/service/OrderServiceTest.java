@@ -21,6 +21,8 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @DataJpaTest
 @Import({OrderService.class, OrderMapperImpl.class})
@@ -54,6 +56,36 @@ public class OrderServiceTest {
                 .build();
         entityManager.persistAndFlush(user);
         return user;
+    }
+
+    private Order saveTestOrder(User user) {
+        Order order = Order.builder()
+                .title("Order 1")
+                .price(BigDecimal.valueOf(3.45))
+                .status(OrderStatus.PENDING)
+                .user(user)
+                .deletedAt(null)
+                .build();
+        entityManager.persistAndFlush(order);
+        return order;
+    }
+
+    private Order saveDeletedTestOrder(User user) {
+        Order order = Order.builder()
+                .title("Order 1")
+                .price(BigDecimal.valueOf(3.45))
+                .status(OrderStatus.PENDING)
+                .user(user)
+                .deletedAt(Instant.now())
+                .build();
+        entityManager.persistAndFlush(order);
+        return order;
+    }
+
+    private void saveListOfTestOrders(Order[] orders) {
+        for (Order order : orders) {
+            entityManager.persistAndFlush(order);
+        }
     }
 
     @Nested
@@ -105,7 +137,7 @@ public class OrderServiceTest {
     @DisplayName("Get one tests")
     class GetOneTests {
         @Test
-        void getOne_shouldReturnOrderWhenExistsAndNotDeleted() {
+        void shouldReturnOrderWhenExistsAndNotDeleted() {
             User user = saveTestUser();
             Order order = saveTestOrder(user);
 
@@ -124,7 +156,7 @@ public class OrderServiceTest {
         }
 
         @Test
-        void getOne_shouldThrowExceptionWhenOrderIsDeleted() {
+        void shouldThrowExceptionWhenOrderIsDeleted() {
             User user = saveTestUser();
             Order deletedOrder = saveDeletedTestOrder(user);
 
@@ -133,7 +165,7 @@ public class OrderServiceTest {
         }
 
         @Test
-        void getOne_shouldThrowExceptionWhenUserIsDeleted() {
+        void shouldThrowExceptionWhenUserIsDeleted() {
             User deletedUser = saveDeletedTestUser();
             Order order = saveTestOrder(deletedUser);
 
@@ -142,36 +174,58 @@ public class OrderServiceTest {
         }
 
         @Test
-        void getOne_shouldThrowExceptionWhenBothUserAndOrderAreDeleted() {
+        void shouldThrowExceptionWhenBothUserAndOrderAreDeleted() {
             User deletedUser = saveDeletedTestUser();
             Order deletedOrder = saveDeletedTestOrder(deletedUser);
 
             assertThatThrownBy(() -> orderService.getOne(deletedUser.getId(), deletedOrder.getId()))
                     .isInstanceOf(RuntimeException.class);
         }
+    }
 
-        private Order saveTestOrder(User user) {
-            Order order = Order.builder()
+    @Nested
+    @DisplayName("Get list testw")
+    class GetListTests {
+        @Test
+        void shouldReturnListOfNotDeletedOrdersForUserWhenUserIsNptDeleted() {
+            User user = saveTestUser();
+
+            Order order1 = Order.builder()
                     .title("Order 1")
-                    .price(BigDecimal.valueOf(3.45))
+                    .price(BigDecimal.valueOf(1.45))
                     .status(OrderStatus.PENDING)
                     .user(user)
                     .deletedAt(null)
                     .build();
-            entityManager.persistAndFlush(order);
-            return order;
-        }
-
-        private Order saveDeletedTestOrder(User user) {
-            Order order = Order.builder()
-                    .title("Order 1")
-                    .price(BigDecimal.valueOf(3.45))
-                    .status(OrderStatus.PENDING)
+            Order order2 = Order.builder()
+                    .title("Order 2")
+                    .price(BigDecimal.valueOf(2.45))
+                    .status(OrderStatus.CANCELED)
                     .user(user)
-                    .deletedAt(Instant.now())
+                    .deletedAt(null)
                     .build();
-            entityManager.persistAndFlush(order);
-            return order;
+            Order order3 = Order.builder()
+                    .title("Order 3")
+                    .price(BigDecimal.valueOf(3.45))
+                    .status(OrderStatus.CANCELED)
+                    .user(user)
+                    .deletedAt(null)
+                    .build();
+            saveListOfTestOrders(new Order[]{order1, order2, order3});
+
+            OrderResponse response1 = new OrderResponse(1L, order1.getTitle(), order1.getPrice(), order1.getStatus(), null);
+            OrderResponse response2 = new OrderResponse(2L, order2.getTitle(), order2.getPrice(), order2.getStatus(), null);
+            OrderResponse response3 = new OrderResponse(3L, order3.getTitle(), order3.getPrice(), order3.getStatus(), null);
+
+            List<OrderResponse> expected = List.of(response1, response2, response3);
+            List<OrderResponse> result = orderService.getList(user.getId());
+
+            assertThat(result).size().isEqualTo(3);
+            assertThat(result)
+                    .usingRecursiveComparison()
+                    .ignoringFields("id")
+                    .ignoringCollectionOrder()
+                    .isEqualTo(expected);
         }
     }
 }
