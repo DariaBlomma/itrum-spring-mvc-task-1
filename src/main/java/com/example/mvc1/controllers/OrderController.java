@@ -2,13 +2,11 @@ package com.example.mvc1.controllers;
 
 import com.example.mvc1.dtos.order.OrderRequest;
 import com.example.mvc1.dtos.order.OrderResponse;
-import com.example.mvc1.entities.Order;
 import com.example.mvc1.services.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
