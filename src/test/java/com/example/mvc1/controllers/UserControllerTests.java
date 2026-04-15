@@ -3,6 +3,7 @@ package com.example.mvc1.controllers;
 import com.example.mvc1.dtos.order.OrderResponse;
 import com.example.mvc1.dtos.user.UserRequest;
 import com.example.mvc1.dtos.user.UserResponse;
+import com.example.mvc1.entities.Order;
 import com.example.mvc1.entities.User;
 import com.example.mvc1.enums.OrderStatus;
 import com.example.mvc1.mappers.OrderMapperImpl;
@@ -16,11 +17,13 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+
 import java.math.BigDecimal;
 import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
@@ -108,6 +111,121 @@ public class UserControllerTests extends BaseControllerTest {
             return mockMvcTester
                     .get()
                     .uri("/users/{id}", userId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .exchange();
+        }
+    }
+
+    @Nested
+    @DisplayName("Get list with pagination tests")
+    class GetListWithPaginationTests {
+        @Test
+        void shouldReturn200WhenRequestIsCorrect() throws Exception {
+            User user1 = User.builder()
+                    .id(1L)
+                    .userName("user1")
+                    .email("user1@mail.com")
+                    .color("#FFF")
+                    .deletedAt(null)
+                    .build();
+
+            User user2 = User.builder()
+                    .id(2L)
+                    .userName("user2")
+                    .email("user2@mail.com")
+                    .color("#000")
+                    .deletedAt(null)
+                    .build();
+
+            Order order1 = Order.builder()
+                    .id(101L)
+                    .title("Order 1")
+                    .price(BigDecimal.valueOf(100))
+                    .status(OrderStatus.PENDING)
+                    .user(user1)
+                    .build();
+
+            Order order2 = Order.builder()
+                    .id(102L)
+                    .title("Order 2")
+                    .price(BigDecimal.valueOf(200))
+                    .status(OrderStatus.PAID)
+                    .user(user1)
+                    .build();
+
+            Order order3 = Order.builder()
+                    .id(103L)
+                    .title("Order 3")
+                    .price(BigDecimal.valueOf(300))
+                    .status(OrderStatus.PENDING)
+                    .user(user2)
+                    .build();
+
+            user1.setOrders(List.of(order1, order2));
+            user2.setOrders(List.of(order3));
+
+            List<User> users = List.of(user1, user2);
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<User> usersPage = new PageImpl<>(users, pageable, users.size());
+
+            when(userRepository.findAllActiveWithOrdersPaginated(any(Pageable.class)))
+                    .thenReturn(usersPage);
+
+            performGetPaginated(0, 10, "userName,asc").assertThat().hasStatus(HttpStatus.OK);
+        }
+
+        @Test
+        void shouldReturnAllUserFieldsWithoutOrderInfoWhenRequestIsCorrect() throws Exception {
+            // todo: continue here
+            UserResponse user1 = new UserResponse(1L, "user1", "user1@mail.com", List.of(), "#FFF", null);
+            UserResponse user2 = new UserResponse(2L, "user2", "user2@mail.com", List.of(), "#000", null);
+
+            OrderResponse order1 = new OrderResponse(101L, "Order 1", BigDecimal.valueOf(100), OrderStatus.PENDING, null);
+            OrderResponse order2 = new OrderResponse(102L, "Order 2", BigDecimal.valueOf(200), OrderStatus.PAID, null);
+
+            OrderResponse order3 = new OrderResponse(103L, "Order 3", BigDecimal.valueOf(300), OrderStatus.PENDING, null);
+
+            user1.setOrders(List.of(order1, order2));
+            user2.setOrders(List.of(order3));
+
+            List<UserResponse> users = List.of(user1, user2);
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<UserResponse> usersPage = new PageImpl<>(users, pageable, users.size());
+
+            doReturn(usersPage).when(userService).getListWithPagination(any(Pageable.class));
+
+            UserResponse user1WithoutOrders = new UserResponse(
+                    user1.getId(),
+                    user1.getUserName(),
+                    user1.getEmail(),
+                    List.of(),
+                    user1.getColor(),
+                    user1.getDeletedAt()
+            );
+
+            UserResponse user2WithoutOrders = new UserResponse(
+                    user2.getId(),
+                    user2.getUserName(),
+                    user2.getEmail(),
+                    List.of(),
+                    user2.getColor(),
+                    user2.getDeletedAt()
+            );
+
+            List<UserResponse> expectedContent = List.of(user1WithoutOrders, user2WithoutOrders);
+            Page<UserResponse> expectedPage = new PageImpl<>(expectedContent, pageable, users.size());
+
+            String expectedString = objectMapper.writeValueAsString(expectedPage);
+
+            performGetPaginated(0, 10, "userName,asc").assertThat()
+                    .bodyJson()
+                    .isEqualTo(expectedString);
+        }
+
+        private MvcTestResult performGetPaginated(int page, int size, String sort) throws Exception {
+            return mockMvcTester
+                    .get()
+                    .uri("/users?page=" + page + "&size=" + size + "&sort=" + sort)
                     .contentType(MediaType.APPLICATION_JSON)
                     .exchange();
         }
