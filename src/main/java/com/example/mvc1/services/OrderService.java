@@ -40,6 +40,8 @@ public class OrderService {
     }
 
     public List<OrderResponse> getList(Long userId) {
+        userRepository.findActiveById(userId).orElseThrow(
+                () -> new ResourceNotFoundException("User not found with id " + userId));
         List<Order> orders = orderRepository.findAllActiveForUser(userId);
         return orders.stream().map(orderMapper::toResponse).toList();
     }

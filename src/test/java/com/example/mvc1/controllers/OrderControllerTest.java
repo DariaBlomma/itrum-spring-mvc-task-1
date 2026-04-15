@@ -11,7 +11,6 @@ import com.example.mvc1.services.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.shadow.de.siegmar.fastcsv.util.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +45,8 @@ public class OrderControllerTest {
 
     private final Long userId = 1L;
     private final Long orderId = 1L;
+    private final Long anotherOrderId = 2L;
+    private final Long deletedOrderId = 3L;
 
     private User getTestUser(List<Order> orders) {
         return new User(userId, "testUser", "test@gmail.com", "#FFF", orders, null);
@@ -59,6 +60,28 @@ public class OrderControllerTest {
                 .status(OrderStatus.PENDING)
                 .user(getTestUser(List.of()))
                 .deletedAt(null)
+                .build();
+    }
+
+    private Order getAnotherTestOrder() {
+        return Order.builder()
+                .id(anotherOrderId)
+                .title("Order Another")
+                .price(BigDecimal.valueOf(3.45))
+                .status(OrderStatus.PENDING)
+                .user(getTestUser(List.of()))
+                .deletedAt(null)
+                .build();
+    }
+
+    private Order getDeletedTestOrder() {
+        return Order.builder()
+                .id(deletedOrderId)
+                .title("Deleted order")
+                .price(BigDecimal.valueOf(3.45))
+                .status(OrderStatus.PENDING)
+                .user(getTestUser(List.of()))
+                .deletedAt(Instant.now())
                 .build();
     }
 
@@ -76,6 +99,26 @@ public class OrderControllerTest {
 
     private void mockNotDeletedOrderNotFound() {
         when(orderRepository.findActiveByIdForUser(orderId, userId)).thenReturn(Optional.empty());
+    }
+
+    private void mockAnyOrderNotFound() {
+        when(orderRepository.findByIdForUser(orderId, userId)).thenReturn(Optional.empty());
+    }
+
+    private void mockAnyOrderFound() {
+        when(orderRepository.findByIdForUser(orderId, userId)).thenReturn(Optional.of(getTestOrder()));
+    }
+
+    private void mockDeletedOrderFound() {
+        when(orderRepository.findByIdForUser(orderId, userId)).thenReturn(Optional.of(getDeletedTestOrder()));
+    }
+
+    private void mockListFound() {
+        when(orderRepository.findAllActiveForUser(userId)).thenReturn(List.of(getTestOrder(), getAnotherTestOrder()));
+    }
+
+    private void mockListNotFound() {
+        when(orderRepository.findAllActiveForUser(userId)).thenReturn(List.of());
     }
 
     @Nested
@@ -127,14 +170,108 @@ public class OrderControllerTest {
 
             performGet(userId, orderId).assertThat().hasStatus(HttpStatus.NOT_FOUND);
         }
+
+        private MvcTestResult performGet(Long userId, Long orderId) throws Exception {
+            return mockMvcTester
+                    .get()
+                    .uri("/orders/{id}", orderId)
+                    .param("userId", String.valueOf(userId))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .exchange();
+        }
     }
 
-    private MvcTestResult performGet(Long userId, Long orderId) throws Exception {
-        return mockMvcTester
-                .get()
-                .uri("/orders/{id}", orderId)
-                .param("userId", String.valueOf(userId))
-                .contentType(MediaType.APPLICATION_JSON)
-                .exchange();
+    @Nested
+    @DisplayName("Get List")
+    class GetListTests {
+        @Test
+        void shouldReturn200WhenRequestIsValidAndUserIsNotDeleted() throws  Exception {
+            mockNotDeletedUserFound();
+            mockListFound();
+            performGet(userId).assertThat().hasStatus(HttpStatus.OK);
+        }
+
+        @Test
+        void shouldReturn200WhenNoOrdersFound() throws Exception {
+            mockNotDeletedUserFound();
+            mockListNotFound();
+            performGet(userId).assertThat().hasStatus(HttpStatus.OK);
+        }
+
+        @Test
+        void shouldReturn404WhenUserIsDeleted() throws Exception {
+            mockNotDeletedUserNotFound();
+            performGet(userId).assertThat().hasStatus(HttpStatus.NOT_FOUND);
+        }
+
+        private MvcTestResult performGet(Long userId) throws Exception {
+            return mockMvcTester
+                    .get()
+                    .uri("/orders")
+                    .param("userId", String.valueOf(userId))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .exchange();
+        }
+    }
+
+    @Nested
+    @DisplayName("Update tests")
+    class UpdateTests {
+        @Test
+        void shouldReturn200WhenBothOrderAndUserAreNotDeletedAndRequestIsValid() throws  Exception {
+            mockNotDeletedOrderFound();
+            OrderRequest request = new OrderRequest("upd", BigDecimal.valueOf(34.03), OrderStatus.PENDING);
+
+            performPut(userId, orderId, request).assertThat().hasStatus(HttpStatus.OK);
+        }
+
+        @Test
+        void shouldReturn404WhenOrderOrUserIsDeleted() throws  Exception {
+            mockNotDeletedOrderNotFound();
+            OrderRequest request = new OrderRequest("upd", BigDecimal.valueOf(34.03), OrderStatus.PENDING);
+
+            performPut(userId, orderId, request).assertThat().hasStatus(HttpStatus.NOT_FOUND);
+        }
+
+        private MvcTestResult performPut(Long userId, Long orderId, OrderRequest request) throws Exception {
+            return mockMvcTester
+                    .put()
+                    .uri("/orders/{id}", orderId)
+                    .param("userId", String.valueOf(userId))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request))
+                    .exchange();
+        }
+    }
+
+    @Nested
+    @DisplayName("Delete soft tests")
+    class DeleteSoftMethods {
+        @Test
+        void shouldReturn204WhenOrderExists() throws Exception {
+            mockAnyOrderFound();
+            performDelete(userId, orderId).assertThat().hasStatus(HttpStatus.NO_CONTENT);
+        }
+
+        @Test
+        void shouldReturn404WhenOrderDoesNotExistOrUserIsDeleted() throws  Exception {
+            mockAnyOrderNotFound();
+            performDelete(userId, orderId).assertThat().hasStatus(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        void shouldReturn409WhenOrderIsAlreadyDeleted() throws Exception {
+            mockDeletedOrderFound();
+            performDelete(userId, orderId).assertThat().hasStatus(HttpStatus.CONFLICT);
+        }
+
+        private MvcTestResult performDelete(Long userId, Long orderId) throws Exception {
+            return mockMvcTester
+                    .delete()
+                    .uri("/orders/{id}", orderId)
+                    .param("userId", String.valueOf(userId))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .exchange();
+        }
     }
 }

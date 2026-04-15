@@ -41,7 +41,7 @@ public class OrderController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteSoft(Long userId, Long orderId) {
+    public void deleteSoft(Long userId, @PathVariable("id") Long orderId) {
         orderService.deleteSoft(userId, orderId);
     }
 }
