@@ -15,7 +15,7 @@ import java.util.List;
 public class OrderController {
     private final OrderService orderService;
 
-    @PostMapping("/{id}")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponse create(Long userId, @Valid @RequestBody OrderRequest request) {
         return orderService.create(userId, request);

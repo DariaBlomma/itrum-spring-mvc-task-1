@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex, request);
     }
 
-    @ExceptionHandler(UnauthorizedException.class)
+    @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex, request);
     }
