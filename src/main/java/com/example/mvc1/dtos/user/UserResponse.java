@@ -10,6 +10,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
+@JsonView(Views.UserDefault.class)
 public class UserResponse {
     private Long id;
     private String userName;

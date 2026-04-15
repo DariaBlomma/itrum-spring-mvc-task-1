@@ -27,7 +27,7 @@ public class UserController {
     }
 
     @JsonView(Views.UserFullWithOrders.class)
-    @GetMapping("/{id}]")
+    @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public UserResponse getOneWithOrders(@PathVariable("id") Long userId) {
         return userService.getOneWithOrders(userId);

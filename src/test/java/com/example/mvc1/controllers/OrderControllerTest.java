@@ -8,13 +8,13 @@ import com.example.mvc1.mappers.OrderMapperImpl;
 import com.example.mvc1.repositories.OrderRepository;
 import com.example.mvc1.repositories.UserRepository;
 import com.example.mvc1.services.OrderService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -26,30 +26,21 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 @WebMvcTest(OrderController.class)
 @Import({OrderService.class, OrderMapperImpl.class})
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
-public class OrderControllerTest {
-    @Autowired
-    private MockMvcTester mockMvcTester;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
+public class OrderControllerTest extends BaseControllerTest{
     @MockitoBean
     private OrderRepository orderRepository;
 
-    @MockitoBean
-    private UserRepository userRepository;
-
-    private final Long userId = 1L;
     private final Long orderId = 1L;
     private final Long anotherOrderId = 2L;
     private final Long deletedOrderId = 3L;
 
-    private User getTestUser(List<Order> orders) {
-        return new User(userId, "testUser", "test@gmail.com", "#FFF", orders, null);
+    @BeforeEach
+    void setUp() {
+        when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     private Order getTestOrder() {
@@ -58,7 +49,7 @@ public class OrderControllerTest {
                 .title("Order 1")
                 .price(BigDecimal.valueOf(3.45))
                 .status(OrderStatus.PENDING)
-                .user(getTestUser(List.of()))
+                .user(getTestUser())
                 .deletedAt(null)
                 .build();
     }
@@ -69,7 +60,7 @@ public class OrderControllerTest {
                 .title("Order Another")
                 .price(BigDecimal.valueOf(3.45))
                 .status(OrderStatus.PENDING)
-                .user(getTestUser(List.of()))
+                .user(getTestUser())
                 .deletedAt(null)
                 .build();
     }
@@ -80,17 +71,9 @@ public class OrderControllerTest {
                 .title("Deleted order")
                 .price(BigDecimal.valueOf(3.45))
                 .status(OrderStatus.PENDING)
-                .user(getTestUser(List.of()))
+                .user(getTestUser())
                 .deletedAt(Instant.now())
                 .build();
-    }
-
-    private void mockNotDeletedUserFound() {
-        when(userRepository.findActiveById(userId)).thenReturn(Optional.of(getTestUser(List.of())));
-    }
-
-    private void mockNotDeletedUserNotFound() {
-        when(userRepository.findActiveById(userId)).thenReturn(Optional.empty());
     }
 
     private void mockNotDeletedOrderFound() {
