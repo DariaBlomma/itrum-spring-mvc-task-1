@@ -45,26 +45,37 @@ public class OrderControllerTest {
     private UserRepository userRepository;
 
     private final Long userId = 1L;
-    private final Long deletedUserId = 2L;
+    private final Long orderId = 1L;
 
     private User getTestUser(List<Order> orders) {
         return new User(userId, "testUser", "test@gmail.com", "#FFF", orders, null);
     }
 
-    private User getDeletedTestUser(List<Order> orders) {
-        return new User(deletedUserId, "deletedUser", "testDeleted@gmail.com", "#CCC", orders, Instant.now());
+    private Order getTestOrder() {
+        return Order.builder()
+                .id(orderId)
+                .title("Order 1")
+                .price(BigDecimal.valueOf(3.45))
+                .status(OrderStatus.PENDING)
+                .user(getTestUser(List.of()))
+                .deletedAt(null)
+                .build();
     }
 
-    private void mockNotDeletedUserFound(Long userId) {
+    private void mockNotDeletedUserFound() {
         when(userRepository.findActiveById(userId)).thenReturn(Optional.of(getTestUser(List.of())));
     }
 
-    private void mockNotDeletedUserFound(Long userId, User userWithOrders) {
-        when(userRepository.findActiveById(userId)).thenReturn(Optional.of(userWithOrders));
+    private void mockNotDeletedUserNotFound() {
+        when(userRepository.findActiveById(userId)).thenReturn(Optional.empty());
     }
 
-    private void mockNotDeletedUserNotFound(Long userId) {
-        when(userRepository.findActiveById(userId)).thenReturn(Optional.empty());
+    private void mockNotDeletedOrderFound() {
+        when(orderRepository.findActiveByIdForUser(orderId, userId)).thenReturn(Optional.of(getTestOrder()));
+    }
+
+    private void mockNotDeletedOrderNotFound() {
+        when(orderRepository.findActiveByIdForUser(orderId, userId)).thenReturn(Optional.empty());
     }
 
     @Nested
@@ -72,7 +83,7 @@ public class OrderControllerTest {
     class CreateTests {
         @Test
         void shouldReturn201WhenRequestIsCorrect() throws Exception {
-            mockNotDeletedUserFound(userId);
+            mockNotDeletedUserFound();
             OrderRequest request = new OrderRequest("order1", BigDecimal.valueOf(34.03), OrderStatus.PENDING);
 
             performCreate(userId, request)
@@ -83,7 +94,7 @@ public class OrderControllerTest {
         @Test
         void shouldReturn404IfUserDoesNotExistOrDeleted() throws Exception {
             OrderRequest request = new OrderRequest("order1", BigDecimal.valueOf(34.03), OrderStatus.PENDING);
-            mockNotDeletedUserNotFound(userId);
+            mockNotDeletedUserNotFound();
 
             performCreate(userId, request).assertThat().hasStatus(HttpStatus.NOT_FOUND);
         }
@@ -105,21 +116,16 @@ public class OrderControllerTest {
     class GetOneTests {
         @Test
         void shouldReturn200WhenRequestIsValidAndUserExists() throws Exception{
-            User user = getTestUser(List.of());
-            Order order = Order.builder()
-                    .id(1L)
-                    .title("Order 1")
-                    .price(BigDecimal.valueOf(3.45))
-                    .status(OrderStatus.PENDING)
-                    .user(user)
-                    .deletedAt(null)
-                    .build();
+            mockNotDeletedOrderFound();
 
-            user.setOrders(List.of(order));
-            mockNotDeletedUserFound(userId, user);
-            // todo: add orderRepositury mock, check if need userMock
+            performGet(userId, orderId).assertThat().hasStatus(HttpStatus.OK);
+        }
 
-            performGet(userId, order.getId()).assertThat().hasStatus(HttpStatus.OK);
+        @Test
+        void shouldReturn404WhenOrderDoesNotExistOrDeleted() throws Exception {
+            mockNotDeletedOrderNotFound();
+
+            performGet(userId, orderId).assertThat().hasStatus(HttpStatus.NOT_FOUND);
         }
     }
 
