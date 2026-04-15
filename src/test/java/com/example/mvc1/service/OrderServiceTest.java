@@ -16,16 +16,15 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @DataJpaTest
-@Import({OrderService.class, OrderMapperImpl.class})
+@Import({OrderService.class, OrderMapperImpl.class, ObjectMapper.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 public class OrderServiceTest {
     @Autowired
@@ -36,6 +35,9 @@ public class OrderServiceTest {
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private User saveTestUser() {
         User user = User.builder()
@@ -184,7 +186,7 @@ public class OrderServiceTest {
     }
 
     @Nested
-    @DisplayName("Get list testw")
+    @DisplayName("Get list tests")
     class GetListTests {
         @Test
         void shouldReturnListOfNotDeletedOrdersForUserWhenUserIsNptDeleted() {
@@ -226,6 +228,96 @@ public class OrderServiceTest {
                     .ignoringFields("id")
                     .ignoringCollectionOrder()
                     .isEqualTo(expected);
+        }
+    }
+
+    @Nested
+    @DisplayName("Update tests")
+    class UpdateTests {
+        @Test
+        void shouldUpdateOrderWhenNotDeletedAndBelongsToNotDeletedUser()  {
+            User user = saveTestUser();
+            Order order = saveTestOrder(user);
+            OrderRequest request = new OrderRequest("upd1", BigDecimal.ONE, OrderStatus.PAID);
+
+            OrderResponse response = orderService.update(user.getId(), order.getId(), request);
+
+            OrderResponse expected = new OrderResponse(1L, request.getTitle(), request.getPrice(), request.getStatus(), null);
+
+            assertThat(response)
+                     .usingRecursiveComparison()
+                    .ignoringFields("id")
+                    .isEqualTo(expected);
+        }
+
+        @Test
+        void shouldNotUpdateOrderWhenUserIsDeleted() {
+            User deletedUser = saveDeletedTestUser();
+            Order order = saveTestOrder(deletedUser);
+            Order originalOrder = cloneOrder(order);
+
+            OrderRequest request = new OrderRequest("upd1", BigDecimal.ONE, OrderStatus.PAID);
+
+            try {
+                orderService.update(deletedUser.getId(), order.getId(), request);
+            } catch (RuntimeException ignored) {
+
+            }
+
+            Order orderAfter = orderRepository.findById(order.getId()).orElseThrow();
+
+            assertThat(orderAfter)
+                    .usingRecursiveComparison()
+                    .isEqualTo(originalOrder);
+        }
+
+        @Test
+        void shouldNotUpdateOrderWhenOrderIsDeleted() {
+            User user = saveTestUser();
+            Order deletedOrder = saveDeletedTestOrder(user);
+            Order originalOrder = cloneOrder(deletedOrder);
+
+            OrderRequest request = new OrderRequest("upd1", BigDecimal.ONE, OrderStatus.PAID);
+
+            try {
+                orderService.update(user.getId(), deletedOrder.getId(), request);
+            } catch (RuntimeException ignored) {
+
+            }
+
+            Order orderAfter = orderRepository.findById(deletedOrder.getId()).orElseThrow();
+
+            assertThat(orderAfter)
+                    .usingRecursiveComparison()
+                    .isEqualTo(originalOrder);
+        }
+
+        @Test
+        void shouldNotUpdateOrderWhenBothOrderAndUserAreDeleted() {
+            User deletedUser = saveDeletedTestUser();
+            Order deletedOrder = saveDeletedTestOrder(deletedUser);
+            Order originalOrder = cloneOrder(deletedOrder);
+
+            OrderRequest request = new OrderRequest("upd1", BigDecimal.ONE, OrderStatus.PAID);
+
+            try {
+                orderService.update(deletedUser.getId(), deletedOrder.getId(), request);
+            } catch (RuntimeException ignored) {
+
+            }
+
+            Order orderAfter = orderRepository.findById(deletedOrder.getId()).orElseThrow();
+
+            assertThat(orderAfter)
+                    .usingRecursiveComparison()
+                    .isEqualTo(originalOrder);
+        }
+
+        private Order cloneOrder(Order order) {
+            return objectMapper.readValue(
+                    objectMapper.writeValueAsString(order),
+                    Order.class
+            );
         }
     }
 }
