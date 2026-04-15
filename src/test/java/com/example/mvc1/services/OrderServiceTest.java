@@ -1,4 +1,4 @@
-package com.example.mvc1.service;
+package com.example.mvc1.services;
 
 import com.example.mvc1.dtos.order.OrderRequest;
 import com.example.mvc1.dtos.order.OrderResponse;
@@ -7,7 +7,6 @@ import com.example.mvc1.entities.User;
 import com.example.mvc1.enums.OrderStatus;
 import com.example.mvc1.mappers.OrderMapperImpl;
 import com.example.mvc1.repositories.OrderRepository;
-import com.example.mvc1.services.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

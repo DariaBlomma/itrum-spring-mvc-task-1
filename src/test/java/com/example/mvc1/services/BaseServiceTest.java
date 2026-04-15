@@ -1,4 +1,4 @@
-package com.example.mvc1.service;
+package com.example.mvc1.services;
 
 import com.example.mvc1.entities.Order;
 import com.example.mvc1.entities.User;
