@@ -37,11 +37,10 @@ public class UserController {
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public Page<UserResponse> getListWithPagination(
-            Long userId,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC)
             Pageable pageable
     ){
-        return userService.getListWithPagination(userId, pageable);
+        return userService.getListWithPagination(pageable);
     }
 
     @PutMapping("/{id}")

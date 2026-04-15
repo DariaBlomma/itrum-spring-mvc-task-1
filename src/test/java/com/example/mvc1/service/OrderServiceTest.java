@@ -12,9 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
-import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -22,49 +19,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-@DataJpaTest
 @Import({OrderService.class, OrderMapperImpl.class})
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
-public class OrderServiceTest {
+public class OrderServiceTest extends BaseServiceTest {
     @Autowired
     private OrderService orderService;
 
     @Autowired
     private OrderRepository orderRepository;
-
-    @Autowired
-    private TestEntityManager entityManager;
-
-    private User saveTestUser() {
-        User user = User.builder()
-                .email("mail1@gmail.com")
-                .userName("user1")
-                .color("purple")
-                .build();
-        entityManager.persistAndFlush(user);
-        return user;
-    }
-
-    private User saveAnotherTestUser() {
-        User user = User.builder()
-                .email("mailAnother1@gmail.com")
-                .userName("userAnother")
-                .color("blue")
-                .build();
-        entityManager.persistAndFlush(user);
-        return user;
-    }
-
-    private User saveDeletedTestUser() {
-        User user = User.builder()
-                .email("mail1@gmail.com")
-                .userName("user1")
-                .color("purple")
-                .deletedAt(Instant.now())
-                .build();
-        entityManager.persistAndFlush(user);
-        return user;
-    }
 
     private Order saveTestOrder(User user) {
         Order order = Order.builder()
@@ -88,12 +49,6 @@ public class OrderServiceTest {
                 .build();
         entityManager.persistAndFlush(order);
         return order;
-    }
-
-    private void saveListOfTestOrders(Order[] orders) {
-        for (Order order : orders) {
-            entityManager.persistAndFlush(order);
-        }
     }
 
     @Nested

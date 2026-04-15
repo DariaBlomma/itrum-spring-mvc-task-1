@@ -1,11 +1,13 @@
 package com.example.mvc1.dtos.user;
 
 import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 @Data
 @RequiredArgsConstructor
+@AllArgsConstructor
 public class UserRequest {
     @NotNull(message = "Login is required")
     @Size(min = 2, max = 200, message = "User Name must be between 2 and 200 characters")

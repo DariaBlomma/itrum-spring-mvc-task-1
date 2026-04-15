@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -17,6 +18,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @Entity
 @Table(name = "orders")
+@SQLRestriction("deleted_at IS NULL")
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
