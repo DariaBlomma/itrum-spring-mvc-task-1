@@ -320,4 +320,32 @@ public class OrderServiceTest {
             );
         }
     }
+
+    @Nested
+    @DisplayName("Delete soft tests")
+    class DeleteSoftTests {
+        @Test
+        void shouldMarkOrderDeletedWhenItExistsAndUserIsNotDeleted() {
+            User user = saveTestUser();
+            Order order = saveTestOrder(user);
+
+            orderService.deleteSoft(user.getId(), order.getId());
+
+            assertThat(order.isDeleted()).isTrue();
+        }
+
+        @Test
+        void shouldNotMarkOrderDeletedWhenUserIsDeleted() {
+            User deletedUser = saveDeletedTestUser();
+            Order order = saveTestOrder(deletedUser);
+
+            try {
+                orderService.deleteSoft(deletedUser.getId(), order.getId());
+            } catch (RuntimeException ignored) {
+
+            }
+
+            assertThat(order.isDeleted()).isFalse();
+        }
+    }
 }
