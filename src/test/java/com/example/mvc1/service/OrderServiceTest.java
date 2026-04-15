@@ -16,7 +16,6 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
-import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import java.math.BigDecimal;
@@ -24,7 +23,7 @@ import java.time.Instant;
 import java.util.List;
 
 @DataJpaTest
-@Import({OrderService.class, OrderMapperImpl.class, ObjectMapper.class})
+@Import({OrderService.class, OrderMapperImpl.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 public class OrderServiceTest {
     @Autowired
@@ -36,14 +35,21 @@ public class OrderServiceTest {
     @Autowired
     private TestEntityManager entityManager;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     private User saveTestUser() {
         User user = User.builder()
                 .email("mail1@gmail.com")
                 .userName("user1")
                 .color("purple")
+                .build();
+        entityManager.persistAndFlush(user);
+        return user;
+    }
+
+    private User saveAnotherTestUser() {
+        User user = User.builder()
+                .email("mailAnother1@gmail.com")
+                .userName("userAnother")
+                .color("blue")
                 .build();
         entityManager.persistAndFlush(user);
         return user;
@@ -213,11 +219,18 @@ public class OrderServiceTest {
                     .user(user)
                     .deletedAt(null)
                     .build();
-            saveListOfTestOrders(new Order[]{order1, order2, order3});
+            Order order4 = Order.builder()
+                    .title("Order 4")
+                    .price(BigDecimal.valueOf(4.45))
+                    .status(OrderStatus.CANCELED)
+                    .user(user)
+                    .deletedAt(Instant.now())
+                    .build();
+            saveListOfTestOrders(new Order[]{order1, order2, order3, order4});
 
-            OrderResponse response1 = new OrderResponse(1L, order1.getTitle(), order1.getPrice(), order1.getStatus(), null);
-            OrderResponse response2 = new OrderResponse(2L, order2.getTitle(), order2.getPrice(), order2.getStatus(), null);
-            OrderResponse response3 = new OrderResponse(3L, order3.getTitle(), order3.getPrice(), order3.getStatus(), null);
+            OrderResponse response1 = new OrderResponse(order1.getId(), order1.getTitle(), order1.getPrice(), order1.getStatus(), null);
+            OrderResponse response2 = new OrderResponse(order2.getId(), order2.getTitle(), order2.getPrice(), order2.getStatus(), null);
+            OrderResponse response3 = new OrderResponse(order3.getId(), order3.getTitle(), order3.getPrice(), order3.getStatus(), null);
 
             List<OrderResponse> expected = List.of(response1, response2, response3);
             List<OrderResponse> result = orderService.getList(user.getId());
@@ -225,9 +238,45 @@ public class OrderServiceTest {
             assertThat(result).size().isEqualTo(3);
             assertThat(result)
                     .usingRecursiveComparison()
-                    .ignoringFields("id")
                     .ignoringCollectionOrder()
                     .isEqualTo(expected);
+        }
+
+        @Test
+        void shouldReturnEmptyListWhenNoOrdersForUserExist() {
+            User user1 = saveTestUser();
+            User user2 = saveAnotherTestUser();
+            Order order1 = saveTestOrder(user1);
+            Order order2 = saveTestOrder(user1);
+            saveListOfTestOrders(new Order[]{order1, order2});
+
+            List<OrderResponse> responses = orderService.getList(user2.getId());
+
+            assertThat(responses.size()).isEqualTo(0);
+        }
+
+        @Test
+        void shouldReturnEmptyListWhenOnlyDeletedOrdersForUserExist() {
+            User user = saveTestUser();
+            Order deletedOrder1 = saveDeletedTestOrder(user);
+            Order deletedOrder2 = saveDeletedTestOrder(user);
+            saveListOfTestOrders(new Order[]{deletedOrder1, deletedOrder2});
+
+            List<OrderResponse> responses = orderService.getList(user.getId());
+
+            assertThat(responses.size()).isEqualTo(0);
+        }
+
+        @Test
+        void shouldReturnEmptyListWhenUserIsDeleted() {
+            User deletedUser = saveDeletedTestUser();
+            Order order1 = saveTestOrder(deletedUser);
+            Order order2 = saveTestOrder(deletedUser);
+            saveListOfTestOrders(new Order[]{order1, order2});
+
+            List<OrderResponse> responses = orderService.getList(deletedUser.getId());
+
+            assertThat(responses.size()).isEqualTo(0);
         }
     }
 
@@ -314,10 +363,14 @@ public class OrderServiceTest {
         }
 
         private Order cloneOrder(Order order) {
-            return objectMapper.readValue(
-                    objectMapper.writeValueAsString(order),
-                    Order.class
-            );
+            return Order.builder()
+                    .id(order.getId())
+                    .title(order.getTitle())
+                    .price(order.getPrice())
+                    .status(order.getStatus())
+                    .user(order.getUser())
+                    .deletedAt(order.getDeletedAt())
+                    .build();
         }
     }
 
