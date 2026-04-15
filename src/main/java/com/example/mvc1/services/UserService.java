@@ -26,7 +26,6 @@ public class UserService {
     private final OrderService orderService;
     private final OrderMapper orderMapper;
 
-    @Transactional
     public UserResponse create(UserRequest request) {
         User user = userMapper.toEntity(request);
         User saved = userRepository.save(user);
@@ -57,20 +56,23 @@ public class UserService {
         });
     }
 
+    @Transactional
     public UserResponse update(Long userId, UserRequest request) {
         User user = userRepository.findActiveById(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id: " + userId));
         userMapper.update(request, user);
         User saved = userRepository.save(user);
-        return userMapper.toResponse(saved);
+        UserResponse response = userMapper.toResponse(saved);
+        List<OrderResponse> orders = orderService.getList(userId);
+        response.setOrders(orders);
+        return response;
     }
 
-    @Transactional
     public void softDelete(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id: " + userId));
         if (user.isDeleted()) {
-            throw  new ConflictException("User is already deleted");
+            throw new ConflictException("User is already deleted");
         }
 
         user.setDeletedAt(Instant.now());

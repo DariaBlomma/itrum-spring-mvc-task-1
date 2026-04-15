@@ -6,13 +6,11 @@ import com.example.mvc1.dtos.user.UserResponse;
 import com.example.mvc1.entities.Order;
 import com.example.mvc1.entities.User;
 import com.example.mvc1.enums.OrderStatus;
-import com.example.mvc1.repositories.UserRepository;
 import com.example.mvc1.services.OrderService;
 import com.example.mvc1.services.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,9 +31,6 @@ public class UserServiceTest extends BaseServiceTest {
 
     @MockitoBean
     private OrderService orderService;
-
-    @Autowired
-    private UserRepository userRepository;
 
     @Nested
     @DisplayName("Create tests")
@@ -136,6 +131,49 @@ public class UserServiceTest extends BaseServiceTest {
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getNumber()).isZero();
             assertThat(result.getSize()).isEqualTo(10);
+        }
+    }
+
+    @Nested
+    @DisplayName("Update tests")
+    class UpdateTests {
+        @Test
+        void shouldReturnUpdatedUserWhenNotDeleted() {
+            User user = saveTestUser();
+            UserRequest request = new UserRequest("upd1", "upd2@gmail.com", "#CCC");
+
+            UserResponse response = userService.update(user.getId(), request);
+
+            UserResponse expected = new UserResponse(user.getId(), request.getUserName(), request.getEmail(), List.of(), request.getColor(), null);
+
+            assertThat(response).usingRecursiveComparison().isEqualTo(expected);
+        }
+
+        @Test
+        void shouldNotUpdateUserWhenDeleted() {
+            User deletedUser = saveDeletedTestUser();
+            UserResponse expected = new UserResponse(deletedUser.getId(), deletedUser.getUserName(), deletedUser.getEmail(), List.of(), deletedUser.getColor(), deletedUser.getDeletedAt());
+            UserRequest request = new UserRequest("upd1", "upd2@gmail.com", "#CCC");
+
+            try {
+                userService.update(deletedUser.getId(), request);
+            } catch (RuntimeException ignored) {
+            }
+
+            assertThat(deletedUser).usingRecursiveComparison().ignoringFields("orders").isEqualTo(expected);
+        }
+    }
+
+    @Nested
+    @DisplayName("Soft delete tests")
+    class SoftDeleteTests {
+        @Test
+        void shouldMarkUserDeletedWhenExists() {
+            User user = saveTestUser();
+
+            userService.softDelete(user.getId());
+
+            assertThat(user.isDeleted()).isTrue();
         }
     }
 }
