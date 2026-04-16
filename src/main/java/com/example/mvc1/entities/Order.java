@@ -18,7 +18,6 @@ import java.time.Instant;
 @NoArgsConstructor
 @Entity
 @Table(name = "orders")
-@SQLRestriction("deleted_at IS NULL")
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

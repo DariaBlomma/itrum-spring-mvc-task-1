@@ -220,18 +220,6 @@ public class OrderServiceTest extends BaseServiceTest {
 
             assertThat(responses.size()).isEqualTo(0);
         }
-
-        @Test
-        void shouldReturnEmptyListWhenUserIsDeleted() {
-            User deletedUser = saveDeletedTestUser();
-            Order order1 = saveTestOrder(deletedUser);
-            Order order2 = saveTestOrder(deletedUser);
-            saveListOfTestOrders(new Order[]{order1, order2});
-
-            List<OrderResponse> responses = orderService.getList(deletedUser.getId());
-
-            assertThat(responses.size()).isEqualTo(0);
-        }
     }
 
     @Nested

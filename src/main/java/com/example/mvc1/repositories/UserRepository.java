@@ -13,8 +13,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.id = :id AND u.deletedAt IS NULL")
     Optional<User> findActiveById(@Param("id") Long id);
 
-    @Query("SELECT DISTINCT u FROM User u " +
-            "LEFT JOIN FETCH u.orders " +
-            "WHERE u.deletedAt IS NULL")
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.orders o WHERE u.deletedAt IS NULL AND (o.deletedAt IS NULL OR o IS NULL)")
     Page<User> findAllActiveWithOrdersPaginated(Pageable pageable);
 }
