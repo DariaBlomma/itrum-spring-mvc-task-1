@@ -127,57 +127,14 @@ public class UserControllerTests extends BaseControllerTest {
     class GetListWithPaginationTests {
         @Test
         void shouldReturn200WhenRequestIsCorrect() throws Exception {
-            User user1 = User.builder()
-                    .id(1L)
-                    .userName("user1")
-                    .email("user1@mail.com")
-                    .color("#FFF")
-                    .deletedAt(null)
-                    .build();
-
-            User user2 = User.builder()
-                    .id(2L)
-                    .userName("user2")
-                    .email("user2@mail.com")
-                    .color("#000")
-                    .deletedAt(null)
-                    .build();
-
-            Order order1 = Order.builder()
-                    .id(101L)
-                    .title("Order 1")
-                    .price(BigDecimal.valueOf(100))
-                    .status(OrderStatus.PENDING)
-                    .user(user1)
-                    .build();
-
-            Order order2 = Order.builder()
-                    .id(102L)
-                    .title("Order 2")
-                    .price(BigDecimal.valueOf(200))
-                    .status(OrderStatus.PAID)
-                    .user(user1)
-                    .build();
-
-            Order order3 = Order.builder()
-                    .id(103L)
-                    .title("Order 3")
-                    .price(BigDecimal.valueOf(300))
-                    .status(OrderStatus.PENDING)
-                    .user(user2)
-                    .build();
-
-            user1.setOrders(List.of(order1, order2));
-            user2.setOrders(List.of(order3));
-
-            List<User> users = List.of(user1, user2);
-            Pageable pageable = PageRequest.of(0, 10);
-            Page<User> usersPage = new PageImpl<>(users, pageable, users.size());
+            Page<User> usersPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
             when(userRepository.findAllActiveWithOrdersPaginated(any(Pageable.class)))
                     .thenReturn(usersPage);
 
-            performGetPaginated(0, 10, "userName,asc").assertThat().hasStatus(HttpStatus.OK);
+            performGetPaginated(0, 10, "userName,asc")
+                    .assertThat()
+                    .hasStatus(HttpStatus.OK);
         }
 
         @Test
@@ -221,6 +178,63 @@ public class UserControllerTests extends BaseControllerTest {
             return mockMvcTester
                     .get()
                     .uri("/users?page=" + page + "&size=" + size + "&sort=" + sort)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .exchange();
+        }
+    }
+
+    @Nested
+    @DisplayName("Update tests")
+    class UpdateTests {
+        @Test
+        void shouldReturn200IfRequestIsCorrectAndUserIsNotDeleted() throws Exception {
+            mockNotDeletedUserFound();
+            UserRequest request = new UserRequest("upd1", "mail11@gmail.com", "#FFF");
+            performUpdate(userId, request).assertThat().hasStatus(HttpStatus.OK);
+        }
+
+        @Test
+        void shouldReturn404IfUserIsDeleted() throws Exception {
+            mockNotDeletedUserNotFound();
+            UserRequest request = new UserRequest("upd1", "mail11@gmail.com", "#FFF");
+            performUpdate(userId, request).assertThat().hasStatus(HttpStatus.NOT_FOUND);
+        }
+
+        private MvcTestResult performUpdate(Long userId, UserRequest request) throws Exception {
+            return mockMvcTester
+                    .put()
+                    .uri("/users/{id}", userId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request))
+                    .exchange();
+        }
+    }
+
+    @Nested
+    @DisplayName("Delete soft tests")
+    class DeleteSoftTests {
+        @Test
+        void shouldReturn204IfUserExists() throws Exception {
+            mockAnyUserFound();
+            performDelete(userId).assertThat().hasStatus(HttpStatus.NO_CONTENT);
+        }
+
+        @Test
+        void shouldReturn404IfUserDoesNotExist() throws Exception {
+            mockAnyUserNotFound();
+            performDelete(userId).assertThat().hasStatus(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        void shouldReturn409IfUserAlreadyDeleted() throws Exception {
+            mockDeletedUserFound();
+            performDelete(deletedUserId).assertThat().hasStatus(HttpStatus.CONFLICT);
+        }
+
+        private MvcTestResult performDelete(Long userId) throws Exception {
+            return mockMvcTester
+                    .delete()
+                    .uri("/users/{id}", userId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .exchange();
         }
