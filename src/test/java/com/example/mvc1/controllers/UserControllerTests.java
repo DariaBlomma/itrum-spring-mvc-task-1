@@ -1,5 +1,6 @@
 package com.example.mvc1.controllers;
 
+import com.example.mvc1.dtos.Views;
 import com.example.mvc1.dtos.order.OrderResponse;
 import com.example.mvc1.dtos.user.UserRequest;
 import com.example.mvc1.dtos.user.UserResponse;
@@ -15,15 +16,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.*;
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
-
 import java.math.BigDecimal;
 import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,6 +34,7 @@ import static org.mockito.Mockito.when;
 
 @WebMvcTest(UserController.class)
 @Import({UserService.class, UserMapperImpl.class, OrderMapperImpl.class})
+@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class UserControllerTests extends BaseControllerTest {
     @MockitoBean
     private OrderRepository orderRepository;
@@ -41,6 +44,9 @@ public class UserControllerTests extends BaseControllerTest {
 
     @MockitoSpyBean
     private UserService userService;
+
+    @Autowired
+    private UserController userController;
 
     @BeforeEach
     void setUp() {
@@ -176,48 +182,37 @@ public class UserControllerTests extends BaseControllerTest {
 
         @Test
         void shouldReturnAllUserFieldsWithoutOrderInfoWhenRequestIsCorrect() throws Exception {
-            // todo: continue here
-            UserResponse user1 = new UserResponse(1L, "user1", "user1@mail.com", List.of(), "#FFF", null);
-            UserResponse user2 = new UserResponse(2L, "user2", "user2@mail.com", List.of(), "#000", null);
-
+            // mock service return result
+            UserResponse user1 = new UserResponse(1L, "A_user1", "user1@mail.com", List.of(), "#FFF", null);
+            UserResponse user2 = new UserResponse(2L, "B_user2", "user2@mail.com", List.of(), "#000", null);
             OrderResponse order1 = new OrderResponse(101L, "Order 1", BigDecimal.valueOf(100), OrderStatus.PENDING, null);
             OrderResponse order2 = new OrderResponse(102L, "Order 2", BigDecimal.valueOf(200), OrderStatus.PAID, null);
-
             OrderResponse order3 = new OrderResponse(103L, "Order 3", BigDecimal.valueOf(300), OrderStatus.PENDING, null);
-
             user1.setOrders(List.of(order1, order2));
             user2.setOrders(List.of(order3));
-
             List<UserResponse> users = List.of(user1, user2);
-            Pageable pageable = PageRequest.of(0, 10);
+
+            // request
+            int PAGE = 0;
+            int SIZE = 10;
+            String SORT = "userName";
+            Pageable pageable = PageRequest.of(PAGE, SIZE, Sort.by(SORT).ascending());;
             Page<UserResponse> usersPage = new PageImpl<>(users, pageable, users.size());
 
+            String mock = objectMapper.writeValueAsString(usersPage);
+            // service mock
             doReturn(usersPage).when(userService).getListWithPagination(any(Pageable.class));
 
-            UserResponse user1WithoutOrders = new UserResponse(
-                    user1.getId(),
-                    user1.getUserName(),
-                    user1.getEmail(),
-                    List.of(),
-                    user1.getColor(),
-                    user1.getDeletedAt()
-            );
-
-            UserResponse user2WithoutOrders = new UserResponse(
-                    user2.getId(),
-                    user2.getUserName(),
-                    user2.getEmail(),
-                    List.of(),
-                    user2.getColor(),
-                    user2.getDeletedAt()
-            );
-
+            // expected result
+            UserResponse user1WithoutOrders = user1.toBuilder().orders(List.of()).build();
+            UserResponse user2WithoutOrders = user2.toBuilder().orders(List.of()).build();
             List<UserResponse> expectedContent = List.of(user1WithoutOrders, user2WithoutOrders);
-            Page<UserResponse> expectedPage = new PageImpl<>(expectedContent, pageable, users.size());
+            Page<UserResponse> expectedPage = new PageImpl<>(expectedContent, pageable, expectedContent.size());
+            String expectedString = objectMapper
+                    .writerWithView(Views.UserFull.class)
+                    .writeValueAsString(expectedPage);
 
-            String expectedString = objectMapper.writeValueAsString(expectedPage);
-
-            performGetPaginated(0, 10, "userName,asc").assertThat()
+            performGetPaginated(PAGE, SIZE, SORT + ",asc").assertThat()
                     .bodyJson()
                     .isEqualTo(expectedString);
         }
