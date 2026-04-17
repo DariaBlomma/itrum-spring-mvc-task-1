@@ -26,6 +26,7 @@ public class UserService {
     private final OrderService orderService;
     private final OrderMapper orderMapper;
 
+    @Transactional
     public UserResponse create(UserRequest request) {
         User user = userMapper.toEntity(request);
         User saved = userRepository.save(user);
@@ -34,6 +35,7 @@ public class UserService {
         return response;
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getOneWithOrders(Long userId) {
         User user = userRepository.findActiveById(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id: " + userId));
@@ -42,6 +44,7 @@ public class UserService {
         return response;
     }
 
+    @Transactional(readOnly = true)
     public Page<UserResponse> getListWithPagination(Pageable pageable) {
         Page<User> usersPage = userRepository.findAllActiveWithOrdersPaginated(pageable);
         return usersPage.map(user -> {
@@ -68,6 +71,7 @@ public class UserService {
         return response;
     }
 
+    @Transactional
     public void softDelete(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id: " + userId));

@@ -11,7 +11,7 @@ import com.example.mvc1.repositories.OrderRepository;
 import com.example.mvc1.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
@@ -22,6 +22,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final UserRepository userRepository;
 
+    @Transactional
     public OrderResponse create(Long userId, OrderRequest request) {
         User user = userRepository.findActiveById(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id " + userId)
@@ -32,6 +33,7 @@ public class OrderService {
         return orderMapper.toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public OrderResponse getOne(Long userId, Long orderId) {
         Order order = orderRepository.findActiveByIdForUser(orderId, userId).orElseThrow(
                 () -> new ResourceNotFoundException("Order not found with id " + orderId)
@@ -39,6 +41,7 @@ public class OrderService {
         return orderMapper.toResponse(order);
     }
 
+    @Transactional(readOnly = true)
     public List<OrderResponse> getList(Long userId) {
         userRepository.findActiveById(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id " + userId));
@@ -46,6 +49,7 @@ public class OrderService {
         return orders.stream().map(orderMapper::toResponse).toList();
     }
 
+    @Transactional
     public OrderResponse update(Long userId, Long orderId, OrderRequest request) {
         Order order = orderRepository.findActiveByIdForUser(orderId, userId).orElseThrow(
                 () -> new ResourceNotFoundException("Order not found with id " + orderId)
@@ -55,6 +59,7 @@ public class OrderService {
         return orderMapper.toResponse(saved);
     }
 
+    @Transactional
     public void deleteSoft(Long userId, Long orderId) {
         Order order = orderRepository.findByIdForUser(orderId, userId).orElseThrow(
                 () -> new ResourceNotFoundException("Order not found with id " + orderId)
